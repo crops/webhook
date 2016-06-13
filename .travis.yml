@@ -1,0 +1,11 @@
+language: python
+python:
+  - "3.3"
+  - "3.4"
+  - "3.5"
+
+before_install:
+  - pip uninstall -y py
+
+script:
+  - python3 setup.py test

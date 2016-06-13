@@ -6,7 +6,7 @@ setup (
     author = "Randy Witt",
     author_email = "randy.e.witt@linux.intel.com",
     license = "GPLv2",
-    install_requires = ['Flask>0.9'],
+    install_requires = ['Flask>=0.9'],
     setup_requires = ['pytest-runner'],
     tests_require = ['pytest'],
 )
