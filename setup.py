@@ -8,5 +8,5 @@ setup (
     license = "GPLv2",
     install_requires = ['Flask>=0.9'],
     setup_requires = ['pytest-runner'],
-    tests_require = ['pytest'],
+    tests_require = ['pytest-pep8'],
 )
