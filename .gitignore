@@ -1,0 +1,5 @@
+.eggs
+crops_webhook.egg-info
+__pycache__
+.cache
+*.pyc
