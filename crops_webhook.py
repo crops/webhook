@@ -28,6 +28,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from flask import Flask, request, send_file
 from werkzeug.exceptions import BadRequest
 
+
 class WebhookApp():
     def __init__(self, __name__, route, handler_file):
         assert(type(__name__) == str)
@@ -136,4 +137,3 @@ class WebhookApp():
                 return response, status_code
         finally:
             shutil.rmtree(tmpdir)
-

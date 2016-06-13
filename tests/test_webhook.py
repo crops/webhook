@@ -18,6 +18,7 @@ import os
 from crops_webhook import WebhookApp
 from configparser import RawConfigParser
 
+
 @pytest.fixture
 def handler_file(tmpdir):
     name = os.path.join(str(tmpdir), 'handler_file')
@@ -25,10 +26,11 @@ def handler_file(tmpdir):
     config['Handlers'] = {}
     config['Handlers']['testevent'] = 'foo'
 
-    with open (name, 'w') as f:
+    with open(name, 'w') as f:
         config.write(f)
 
     return name
+
 
 @pytest.fixture
 def set_secret_token(request):
@@ -38,6 +40,7 @@ def set_secret_token(request):
     request.addfinalizer(fin)
     os.environ['WEBHOOK_SECRET_TOKEN'] = "foo"
 
+
 def add_handler(filename, event, handler):
     config = RawConfigParser()
     config.read(filename)
@@ -45,6 +48,7 @@ def add_handler(filename, event, handler):
 
     with open(filename, 'w') as f:
         config.write(f)
+
 
 # Actually use openssl to generate the digest so that we're not generating
 # the digest using the same code we're trying to test
@@ -57,11 +61,13 @@ def get_digest(token, data):
 
     return subprocess.check_output(cmd, shell=True).strip()
 
+
 def test_arguments():
     # Ensure the arguments are what is expected
     with pytest.raises(TypeError) as excinfo:
         WebhookApp()
-    assert("__init__() missing 3 required positional arguments: '__name__', 'route', and 'handler_file'" in str(excinfo.value))
+    assert(("__init__() missing 3 required positional arguments: '__name__',"
+            " 'route', and 'handler_file'") in str(excinfo.value))
 
     # Ensure non string arguments fail
     with pytest.raises(AssertionError):
@@ -79,16 +85,19 @@ def test_arguments():
     with pytest.raises(AssertionError):
         WebhookApp("foo", 0, "foo")
 
+
 def test_env(handler_file):
     # Ensure failure if WEBHOOK_SECRET_TOKEN isn't set
     with pytest.raises(Exception) as excinfo:
         WebhookApp("foo", "bar", handler_file)
     assert "Unable to read WEBHOOK_SECRET_TOKEN" in str(excinfo.value)
 
+
 def test_invalid_route(handler_file, set_secret_token):
     # Ensure that an invalid route raises an exception
     with pytest.raises(ValueError) as excinfo:
         WebhookApp("foo", "bar", handler_file)
+
 
 def test_verify_digest():
     token = "foo"
@@ -104,17 +113,21 @@ def test_verify_digest():
     result = WebhookApp._verify_digest(token, data, "foo")
     assert(not result)
 
+
 @pytest.fixture
 def test_client(handler_file, set_secret_token):
     webhook = WebhookApp('test', '/webhook', handler_file)
     return webhook.app.test_client()
 
+
 @pytest.fixture
 def headers():
-    headers = { 'X-CROPS-Auth': 'foo',
+    headers = {
+                'X-CROPS-Auth': 'foo',
                 'X-CROPS-Event': 'foo',
               }
     return headers
+
 
 class TestPost:
     def test_no_headers(self, test_client):
@@ -124,18 +137,18 @@ class TestPost:
         print(rv.status_code)
         print(rv.data)
 
-        assert(rv.status_code ==  400)
+        assert(rv.status_code == 400)
         assert(b'No X-CROPS-Auth header received' in rv.data)
 
     def test_invalid_auth(self, test_client, headers):
         # incorrect auth header
         headers['X-CROPS-Auth'] = '0'
         rv = test_client.post('/webhook', headers=headers)
-                              
+
         print(rv.status_code)
         print(rv.data)
 
-        assert(rv.status_code ==  400)
+        assert(rv.status_code == 400)
         assert(b'Invalid value for X-CROPS-Auth' in rv.data)
 
     def test_no_event(self, headers, test_client):
@@ -149,7 +162,7 @@ class TestPost:
         print(rv.status_code)
         print(rv.data)
 
-        assert(rv.status_code ==  400)
+        assert(rv.status_code == 400)
         assert(b'No X-CROPS-Event header received' in rv.data)
 
     def test_valid_request(self, headers, test_client, handler_file):
@@ -168,8 +181,9 @@ class TestPost:
         print(rv.status_code)
         print(rv.data)
 
-        assert(rv.status_code ==  200)
+        assert(rv.status_code == 200)
         assert(b'OK' in rv.data)
+
 
 # Test payload file gets created with correct contents
 def test_payload(test_client, handler_file, headers):
@@ -189,6 +203,7 @@ def test_payload(test_client, handler_file, headers):
     print(rv.status_code)
     print(rv.data)
     assert(rv.status_code == 200)
+
 
 # Test a handler that fails
 def test_failed_handler(test_client, handler_file, headers):
@@ -210,6 +225,7 @@ def test_failed_handler(test_client, handler_file, headers):
 
     assert(rv.status_code == 500)
     assert(rv.data == b'This thing failed')
+
 
 # Test a successful handler
 def test_failed_handler(test_client, handler_file, headers):
