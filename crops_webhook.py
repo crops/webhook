@@ -29,22 +29,20 @@ from flask import Flask, request, send_file
 from werkzeug.exceptions import BadRequest
 
 
+class Config(object):
+    HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
+
+
 class WebhookApp():
-    def __init__(self, route, handler_file, app):
+    def __init__(self, route, app):
         assert(type(route) == str)
-        assert(type(handler_file) == str)
         assert(isinstance(app, Flask))
 
         self.app = app
 
-        if not os.path.exists(handler_file):
-            raise Exception("{} file does not exist".format(handler_file))
-        else:
-            self.handler_file = handler_file
-            self.config = RawConfigParser()
-            self.config.read(handler_file)
-            if not self.config.has_section('Handlers'):
-                raise Exception("{} does not have a 'Handlers' section")
+        # Load the application configuration
+        self.app.config.from_object(Config)
+        self.app.config.from_envvar('CROPS_WEBHOOK_CONFIG', silent=True)
 
         self.token = os.environ.get('WEBHOOK_SECRET_TOKEN', False)
         if not self.token:
@@ -86,13 +84,25 @@ class WebhookApp():
         if not self._verify_digest(self.token, request.data, digest):
             raise BadRequest('Invalid value for X-CROPS-Auth')
 
+    def _load_handlers_config(self):
+        handlers_file = self.app.config['HANDLERS_FILE']
+        if not os.path.exists(handlers_file):
+            raise Exception("{} file does not exist".format(handlers_file))
+        else:
+            config = RawConfigParser()
+            config.read(handlers_file)
+            if not config.has_section('Handlers'):
+                raise Exception("{} does not have a 'Handlers' section")
+
+        return config
+
     def _gethandler(self, headers):
         event = headers.get('X-CROPS-Event', False)
         if not event:
             raise BadRequest('No X-CROPS-Event header received')
 
-        self.config.read(self.handler_file)
-        handler = self.config.get('Handlers', event, fallback=False)
+        config = self._load_handlers_config()
+        handler = config.get('Handlers', event, fallback=False)
         if not handler:
             raise BadRequest('No Handler for event {}'.format(event))
 

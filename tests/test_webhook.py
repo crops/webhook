@@ -22,6 +22,20 @@ import unittest.mock
 
 
 @pytest.fixture
+def app_config_file(request, tmpdir, handler_file):
+    name = os.path.join(str(tmpdir), 'app_config')
+
+    with open(name, 'w') as f:
+        f.write("HANDLERS_FILE = '{}'\n".format(handler_file))
+
+    def fin():
+        os.environ.pop('CROPS_WEBHOOK_CONFIG')
+
+    request.addfinalizer(fin)
+    os.environ['CROPS_WEBHOOK_CONFIG'] = name
+
+
+@pytest.fixture
 def flaskapp_mock():
     import flask
     mockflask = unittest.mock.create_autospec(Flask, specset=True)
@@ -80,30 +94,18 @@ def test_arguments(flaskapp_mock):
     # Ensure the arguments are what is expected
     with pytest.raises(TypeError) as excinfo:
         WebhookApp()
-    assert(("__init__() missing 3 required positional arguments: "
-            "'route', 'handler_file', and 'app'") in str(excinfo.value))
+    assert(("__init__() missing 2 required positional arguments: "
+            "'route' and 'app'") in str(excinfo.value))
 
     # Ensure non string arguments fail
     with pytest.raises(AssertionError):
-        WebhookApp(0, 0, flaskapp_mock)
-
-    with pytest.raises(AssertionError):
-        WebhookApp(0, 0, flaskapp_mock)
-
-    with pytest.raises(AssertionError):
-        WebhookApp(0, "foo", flaskapp_mock)
-
-    with pytest.raises(AssertionError):
-        WebhookApp("foo", 0, flaskapp_mock)
-
-    with pytest.raises(AssertionError):
-        WebhookApp(0, "foo", flaskapp_mock)
+        WebhookApp(0, flaskapp_mock)
 
 
-def test_env(handler_file, flaskapp_mock):
+def test_env(flaskapp_mock):
     # Ensure failure if WEBHOOK_SECRET_TOKEN isn't set
     with pytest.raises(Exception) as excinfo:
-        WebhookApp("bar", handler_file, flaskapp_mock)
+        WebhookApp("bar", flaskapp_mock)
     assert "Unable to read WEBHOOK_SECRET_TOKEN" in str(excinfo.value)
 
 
@@ -123,9 +125,9 @@ def test_verify_digest():
 
 
 @pytest.fixture
-def test_client(handler_file, set_secret_token):
+def test_client(handler_file, set_secret_token, app_config_file):
     app = Flask("mytestname")
-    webhook = WebhookApp('/webhook', handler_file, app)
+    webhook = WebhookApp('/webhook', app)
     return webhook.app.test_client()
 
 
@@ -237,7 +239,7 @@ def test_failed_handler(test_client, handler_file, headers):
 
 
 # Test a successful handler
-def test_failed_handler(test_client, handler_file, headers):
+def test_successful_handler(test_client, handler_file, headers):
     # Add handler for checking the payload file is correct
     handler = os.path.abspath("tests/handler_success.sh")
     add_handler(handler_file, "testevent", handler)
