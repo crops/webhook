@@ -30,10 +30,12 @@ from werkzeug.exceptions import BadRequest
 
 
 class WebhookApp():
-    def __init__(self, __name__, route, handler_file):
-        assert(type(__name__) == str)
+    def __init__(self, route, handler_file, app):
         assert(type(route) == str)
         assert(type(handler_file) == str)
+        assert(isinstance(app, Flask))
+
+        self.app = app
 
         if not os.path.exists(handler_file):
             raise Exception("{} file does not exist".format(handler_file))
@@ -48,7 +50,6 @@ class WebhookApp():
         if not self.token:
             raise Exception("Unable to read WEBHOOK_SECRET_TOKEN")
 
-        self.app = Flask(__name__)
         self.app.add_url_rule(route, view_func=self._webhook, methods=['POST'])
         self.app.register_error_handler(BadRequest, self._errorhandler)
 

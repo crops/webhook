@@ -17,6 +17,20 @@ import pytest
 import os
 from crops_webhook import WebhookApp
 from configparser import RawConfigParser
+from flask import Flask
+import unittest.mock
+
+
+@pytest.fixture
+def flaskapp_mock():
+    import flask
+    mockflask = unittest.mock.create_autospec(Flask, specset=True)
+
+    # config evidently can't be introspected out, so set it manually
+    mockflask.config = unittest.mock.create_autospec(flask.Config,
+                                                     specset=True)
+
+    return mockflask
 
 
 @pytest.fixture
@@ -62,41 +76,35 @@ def get_digest(token, data):
     return subprocess.check_output(cmd, shell=True).strip()
 
 
-def test_arguments():
+def test_arguments(flaskapp_mock):
     # Ensure the arguments are what is expected
     with pytest.raises(TypeError) as excinfo:
         WebhookApp()
-    assert(("__init__() missing 3 required positional arguments: '__name__',"
-            " 'route', and 'handler_file'") in str(excinfo.value))
+    assert(("__init__() missing 3 required positional arguments: "
+            "'route', 'handler_file', and 'app'") in str(excinfo.value))
 
     # Ensure non string arguments fail
     with pytest.raises(AssertionError):
-        WebhookApp(0, 0, 0)
+        WebhookApp(0, 0, flaskapp_mock)
 
     with pytest.raises(AssertionError):
-        WebhookApp("foo", 0, 0)
+        WebhookApp(0, 0, flaskapp_mock)
 
     with pytest.raises(AssertionError):
-        WebhookApp(0, 0, "foo")
+        WebhookApp(0, "foo", flaskapp_mock)
 
     with pytest.raises(AssertionError):
-        WebhookApp("foo", "foo", 0)
+        WebhookApp("foo", 0, flaskapp_mock)
 
     with pytest.raises(AssertionError):
-        WebhookApp("foo", 0, "foo")
+        WebhookApp(0, "foo", flaskapp_mock)
 
 
-def test_env(handler_file):
+def test_env(handler_file, flaskapp_mock):
     # Ensure failure if WEBHOOK_SECRET_TOKEN isn't set
     with pytest.raises(Exception) as excinfo:
-        WebhookApp("foo", "bar", handler_file)
+        WebhookApp("bar", handler_file, flaskapp_mock)
     assert "Unable to read WEBHOOK_SECRET_TOKEN" in str(excinfo.value)
-
-
-def test_invalid_route(handler_file, set_secret_token):
-    # Ensure that an invalid route raises an exception
-    with pytest.raises(ValueError) as excinfo:
-        WebhookApp("foo", "bar", handler_file)
 
 
 def test_verify_digest():
@@ -116,7 +124,8 @@ def test_verify_digest():
 
 @pytest.fixture
 def test_client(handler_file, set_secret_token):
-    webhook = WebhookApp('test', '/webhook', handler_file)
+    app = Flask("mytestname")
+    webhook = WebhookApp('/webhook', handler_file, app)
     return webhook.app.test_client()
 
 
