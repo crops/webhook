@@ -32,11 +32,11 @@ from werkzeug.exceptions import BadRequest
 class Config(object):
     HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
     KEY_FILE = '/etc/crops-webhook/key'
+    ROUTE = '/webhook'
 
 
 class WebhookApp():
-    def __init__(self, route, app):
-        assert(type(route) == str)
+    def __init__(self, app):
         assert(isinstance(app, Flask))
 
         self.app = app
@@ -47,7 +47,9 @@ class WebhookApp():
 
         self.key = self._get_key()
 
-        self.app.add_url_rule(route, view_func=self._webhook, methods=['POST'])
+        self.app.add_url_rule(self.app.config['ROUTE'],
+                              view_func=self._webhook,
+                              methods=['POST'])
         self.app.register_error_handler(BadRequest, self._errorhandler)
 
     @staticmethod

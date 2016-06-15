@@ -96,12 +96,12 @@ def test_arguments(flaskapp_mock):
     # Ensure the arguments are what is expected
     with pytest.raises(TypeError) as excinfo:
         WebhookApp()
-    assert(("__init__() missing 2 required positional arguments: "
-            "'route' and 'app'") in str(excinfo.value))
+    assert(("__init__() missing 1 required positional argument: "
+            "'app'") in str(excinfo.value))
 
-    # Ensure non string arguments fail
+    # Ensure non flask arguments fail
     with pytest.raises(AssertionError):
-        WebhookApp(0, flaskapp_mock)
+        WebhookApp(0)
 
 
 def test_verify_digest():
@@ -122,7 +122,7 @@ def test_verify_digest():
 @pytest.fixture
 def test_client(handler_file, app_config_file):
     app = Flask("mytestname")
-    webhook = WebhookApp('/webhook', app)
+    webhook = WebhookApp(app)
     return webhook.app.test_client()
 
 
