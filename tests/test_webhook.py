@@ -253,3 +253,25 @@ def test_successful_handler(test_client, handler_file, headers):
 
     assert(rv.status_code == 200)
     assert(rv.data == b'This thing worked')
+
+
+# Test non-existent handler
+def test_non_existent_handler(test_client, handler_file, headers):
+    # Add handler for checking the payload file is correct
+    handler = os.path.abspath("tests/notreallyahandler")
+    add_handler(handler_file, "testevent", handler)
+
+    token = "foo"
+    data = ''
+    headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
+    headers['X-CROPS-Event'] = b'testevent'
+
+    # This should return 200
+    rv = test_client.post('/webhook',
+                          headers=headers,
+                          data=data)
+    print(rv.status_code)
+    print(rv.data)
+
+    assert(rv.status_code == 500)
+    assert(rv.data == b'Handler failure')

@@ -121,6 +121,11 @@ class WebhookApp():
 
         return handler
 
+    # Basic sanity checks on the handler such that it is executable,
+    # exists, etc.
+    def _handler_sane(self, handler):
+        return os.access(handler, os.F_OK | os.R_OK | os.X_OK)
+
     # The hook will run and it will create a temporary directory with the
     # file: "payload".
     # payload is the payload written to the file.
@@ -140,6 +145,9 @@ class WebhookApp():
             payload = request.get_data()
             with open(payload_file, 'wb') as f:
                 f.write(payload)
+
+            if not self._handler_sane(handler):
+                return "Handler failure", 500
 
             # Call the handler from the config
             cmd = [handler, tmpdir]
