@@ -31,6 +31,7 @@ from werkzeug.exceptions import BadRequest
 
 class Config(object):
     HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
+    KEY_FILE = '/etc/crops-webhook/key'
 
 
 class WebhookApp():
@@ -44,9 +45,7 @@ class WebhookApp():
         self.app.config.from_object(Config)
         self.app.config.from_envvar('CROPS_WEBHOOK_CONFIG', silent=True)
 
-        self.token = os.environ.get('WEBHOOK_SECRET_TOKEN', False)
-        if not self.token:
-            raise Exception("Unable to read WEBHOOK_SECRET_TOKEN")
+        self.key = self._get_key()
 
         self.app.add_url_rule(route, view_func=self._webhook, methods=['POST'])
         self.app.register_error_handler(BadRequest, self._errorhandler)
@@ -54,6 +53,20 @@ class WebhookApp():
     @staticmethod
     def _errorhandler(error):
         return error
+
+    def _get_key(self):
+        keyfile = self.app.config['KEY_FILE']
+        key = ''
+        with open(keyfile, 'r') as f:
+            for line in f:
+                key = line.strip()
+                if len(key) != 0:
+                    break
+
+        if not key:
+            raise Exception('Unable to find a key in {}'.format(keyfile))
+        else:
+            return key
 
     # For now assume github style signatures which are assumes "sha1=" is
     # prepended to the signature
@@ -81,7 +94,7 @@ class WebhookApp():
         if not digest:
             raise BadRequest('No X-CROPS-Auth header received')
 
-        if not self._verify_digest(self.token, request.data, digest):
+        if not self._verify_digest(self.key, request.data, digest):
             raise BadRequest('Invalid value for X-CROPS-Auth')
 
     def _load_handlers_config(self):

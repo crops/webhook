@@ -22,11 +22,12 @@ import unittest.mock
 
 
 @pytest.fixture
-def app_config_file(request, tmpdir, handler_file):
+def app_config_file(request, tmpdir, handler_file, key_file):
     name = os.path.join(str(tmpdir), 'app_config')
 
     with open(name, 'w') as f:
         f.write("HANDLERS_FILE = '{}'\n".format(handler_file))
+        f.write("KEY_FILE = '{}'\n".format(key_file))
 
     def fin():
         os.environ.pop('CROPS_WEBHOOK_CONFIG')
@@ -61,12 +62,13 @@ def handler_file(tmpdir):
 
 
 @pytest.fixture
-def set_secret_token(request):
-    def fin():
-        os.environ.pop('WEBHOOK_SECRET_TOKEN')
+def key_file(tmpdir):
+    name = os.path.join(str(tmpdir), 'key_file')
 
-    request.addfinalizer(fin)
-    os.environ['WEBHOOK_SECRET_TOKEN'] = "foo"
+    with open(name, 'w') as f:
+        f.write('foo')
+
+    return name
 
 
 def add_handler(filename, event, handler):
@@ -102,13 +104,6 @@ def test_arguments(flaskapp_mock):
         WebhookApp(0, flaskapp_mock)
 
 
-def test_env(flaskapp_mock):
-    # Ensure failure if WEBHOOK_SECRET_TOKEN isn't set
-    with pytest.raises(Exception) as excinfo:
-        WebhookApp("bar", flaskapp_mock)
-    assert "Unable to read WEBHOOK_SECRET_TOKEN" in str(excinfo.value)
-
-
 def test_verify_digest():
     token = "foo"
     data = "somedata"
@@ -125,7 +120,7 @@ def test_verify_digest():
 
 
 @pytest.fixture
-def test_client(handler_file, set_secret_token, app_config_file):
+def test_client(handler_file, app_config_file):
     app = Flask("mytestname")
     webhook = WebhookApp('/webhook', app)
     return webhook.app.test_client()
@@ -164,7 +159,7 @@ class TestPost:
 
     def test_no_event(self, headers, test_client):
         # No event header
-        token = os.environ['WEBHOOK_SECRET_TOKEN']
+        token = "foo"
         data = "foo"
         headers.pop('X-CROPS-Event')
         headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
@@ -181,7 +176,7 @@ class TestPost:
         handler = os.path.abspath("tests/handler_success_no_response.sh")
         add_handler(handler_file, "testevent", handler)
 
-        token = os.environ['WEBHOOK_SECRET_TOKEN']
+        token = "foo"
         data = 'fizz'
 
         # valid request
@@ -202,7 +197,7 @@ def test_payload(test_client, handler_file, headers):
     handler = os.path.abspath("tests/handler_test_payload.sh")
     add_handler(handler_file, "testevent", handler)
 
-    token = os.environ['WEBHOOK_SECRET_TOKEN']
+    token = "foo"
     data = 'expectedpayload'
     headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
     headers['X-CROPS-Event'] = b'testevent'
@@ -222,7 +217,7 @@ def test_failed_handler(test_client, handler_file, headers):
     handler = os.path.abspath("tests/handler_fail.sh")
     add_handler(handler_file, "testevent", handler)
 
-    token = os.environ['WEBHOOK_SECRET_TOKEN']
+    token = "foo"
     data = ''
     headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
     headers['X-CROPS-Event'] = b'testevent'
@@ -244,7 +239,7 @@ def test_successful_handler(test_client, handler_file, headers):
     handler = os.path.abspath("tests/handler_success.sh")
     add_handler(handler_file, "testevent", handler)
 
-    token = os.environ['WEBHOOK_SECRET_TOKEN']
+    token = "foo"
     data = ''
     headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
     headers['X-CROPS-Event'] = b'testevent'
