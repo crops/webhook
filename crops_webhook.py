@@ -74,7 +74,7 @@ class WebhookApp():
         if type(computed_digest) != bytes:
             computed_digest = computed_digest.encode()
 
-        return werkzeug.security.safe_str_cmp(digest, computed_digest)
+        return hmac.compare_digest(digest, computed_digest)
 
     def _authenticate(self, request):
         digest = request.headers.get('X-CROPS-Auth', False)
