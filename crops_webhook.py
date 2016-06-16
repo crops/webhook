@@ -99,7 +99,7 @@ class WebhookApp():
         if not digest:
             raise BadRequest('No X-Hub-Signature header received')
 
-        if not self._verify_digest(self.key, request.data, digest):
+        if not self._verify_digest(self.key, request.get_data(), digest):
             raise BadRequest('Invalid value for X-Hub-Signature')
 
     def _load_handlers_config(self):
