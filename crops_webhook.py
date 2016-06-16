@@ -29,6 +29,21 @@ from flask import Flask, request, send_file
 from werkzeug.exceptions import BadRequest, InternalServerError
 
 
+# Just returns the first non empty line from a file
+def get_key(keyfile):
+    key = ''
+    with open(keyfile, 'r') as f:
+        for line in f:
+            key = line.strip()
+            if len(key) != 0:
+                break
+
+    if not key:
+        raise Exception('Unable to find a key in {}'.format(keyfile))
+    else:
+        return key
+
+
 class Config(object):
     HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
     KEY_FILE = '/etc/crops-webhook/key'
@@ -47,7 +62,8 @@ class WebhookApp():
 
         # If the key is in the environment, it has a higher priority than
         # any other config.
-        self.key = os.getenv('CROPS_WEBHOOK_KEY', '') or self._get_key()
+        self.key = (os.getenv('CROPS_WEBHOOK_KEY', '') or
+                    get_key(self.app.config['KEY_FILE']))
 
         self.app.add_url_rule(self.app.config['ROUTE'],
                               view_func=self._webhook,
@@ -57,20 +73,6 @@ class WebhookApp():
     @staticmethod
     def _errorhandler(error):
         return error
-
-    def _get_key(self):
-        keyfile = self.app.config['KEY_FILE']
-        key = ''
-        with open(keyfile, 'r') as f:
-            for line in f:
-                key = line.strip()
-                if len(key) != 0:
-                    break
-
-        if not key:
-            raise Exception('Unable to find a key in {}'.format(keyfile))
-        else:
-            return key
 
     # For now assume github style signatures which are assumes "sha1=" is
     # prepended to the signature
