@@ -129,8 +129,8 @@ def test_client(handler_file, app_config_file):
 @pytest.fixture
 def headers():
     headers = {
-                'X-CROPS-Auth': 'foo',
-                'X-CROPS-Event': 'foo',
+                'X-Hub-Signature': 'foo',
+                'X-GitHub-Event': 'foo',
               }
     return headers
 
@@ -144,32 +144,32 @@ class TestPost:
         print(rv.data)
 
         assert(rv.status_code == 400)
-        assert(b'No X-CROPS-Auth header received' in rv.data)
+        assert(b'No X-Hub-Signature header received' in rv.data)
 
     def test_invalid_auth(self, test_client, headers):
         # incorrect auth header
-        headers['X-CROPS-Auth'] = '0'
+        headers['X-Hub-Signature'] = '0'
         rv = test_client.post('/webhook', headers=headers)
 
         print(rv.status_code)
         print(rv.data)
 
         assert(rv.status_code == 400)
-        assert(b'Invalid value for X-CROPS-Auth' in rv.data)
+        assert(b'Invalid value for X-Hub-Signature' in rv.data)
 
     def test_no_event(self, headers, test_client):
         # No event header
         token = "foo"
         data = "foo"
-        headers.pop('X-CROPS-Event')
-        headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
+        headers.pop('X-GitHub-Event')
+        headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
         rv = test_client.post('/webhook', headers=headers, data=data)
 
         print(rv.status_code)
         print(rv.data)
 
         assert(rv.status_code == 400)
-        assert(b'No X-CROPS-Event header received' in rv.data)
+        assert(b'No X-GitHub-Event header received' in rv.data)
 
     def test_valid_request(self, headers, test_client, handler_file):
         # Add always succesful handler
@@ -180,8 +180,8 @@ class TestPost:
         data = 'fizz'
 
         # valid request
-        headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
-        headers['X-CROPS-Event'] = b'testevent'
+        headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+        headers['X-GitHub-Event'] = b'testevent'
         rv = test_client.post('/webhook', headers=headers, data=data)
 
         print(rv.status_code)
@@ -199,8 +199,8 @@ def test_payload(test_client, handler_file, headers):
 
     token = "foo"
     data = 'expectedpayload'
-    headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
-    headers['X-CROPS-Event'] = b'testevent'
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
 
     # This should return 200
     rv = test_client.post('/webhook',
@@ -219,8 +219,8 @@ def test_failed_handler(test_client, handler_file, headers):
 
     token = "foo"
     data = ''
-    headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
-    headers['X-CROPS-Event'] = b'testevent'
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
 
     # This should return 500
     rv = test_client.post('/webhook',
@@ -241,8 +241,8 @@ def test_successful_handler(test_client, handler_file, headers):
 
     token = "foo"
     data = ''
-    headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
-    headers['X-CROPS-Event'] = b'testevent'
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
 
     # This should return 200
     rv = test_client.post('/webhook',
@@ -263,8 +263,8 @@ def test_non_existent_handler(test_client, handler_file, headers):
 
     token = "foo"
     data = ''
-    headers['X-CROPS-Auth'] = b'sha1=' + get_digest(token, data)
-    headers['X-CROPS-Event'] = b'testevent'
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
 
     # This should return 200
     rv = test_client.post('/webhook',

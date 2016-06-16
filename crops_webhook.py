@@ -92,12 +92,13 @@ class WebhookApp():
         return hmac.compare_digest(digest, computed_digest)
 
     def _authenticate(self, request):
-        digest = request.headers.get('X-CROPS-Auth', False)
+        digest = request.headers.get('X-Hub-Signature', False)
+        print(request.headers)
         if not digest:
-            raise BadRequest('No X-CROPS-Auth header received')
+            raise BadRequest('No X-Hub-Signature header received')
 
         if not self._verify_digest(self.key, request.data, digest):
-            raise BadRequest('Invalid value for X-CROPS-Auth')
+            raise BadRequest('Invalid value for X-Hub-Signature')
 
     def _load_handlers_config(self):
         handlers_file = self.app.config['HANDLERS_FILE']
@@ -112,9 +113,9 @@ class WebhookApp():
         return config
 
     def _gethandler(self, headers):
-        event = headers.get('X-CROPS-Event', False)
+        event = headers.get('X-GitHub-Event', False)
         if not event:
-            raise BadRequest('No X-CROPS-Event header received')
+            raise BadRequest('No X-GitHub-Event header received')
 
         config = self._load_handlers_config()
         handler = config.get('Handlers', event, fallback=False)
