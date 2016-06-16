@@ -45,7 +45,9 @@ class WebhookApp():
         self.app.config.from_object(Config)
         self.app.config.from_envvar('CROPS_WEBHOOK_CONFIG', silent=True)
 
-        self.key = self._get_key()
+        # If the key is in the environment, it has a higher priority than
+        # any other config.
+        self.key = os.getenv('CROPS_WEBHOOK_KEY', '') or self._get_key()
 
         self.app.add_url_rule(self.app.config['ROUTE'],
                               view_func=self._webhook,

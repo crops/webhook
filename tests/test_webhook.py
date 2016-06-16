@@ -275,3 +275,11 @@ def test_non_existent_handler(test_client, handler_file, headers):
 
     assert(rv.status_code == 500)
     assert(rv.data == b'Handler failure')
+
+
+# Check that a key set in the environment is honored
+def test_key_set_in_environment(flaskapp_mock):
+    os.environ['CROPS_WEBHOOK_KEY'] = 'testkey'
+    webhook = WebhookApp(flaskapp_mock)
+
+    assert(webhook.key == 'testkey')
