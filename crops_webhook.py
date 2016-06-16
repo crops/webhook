@@ -126,6 +126,15 @@ class WebhookApp():
         if not handler:
             raise BadRequest('No Handler for event {}'.format(event))
 
+        # We are now assuming all non-absolute path handlers are relative to
+        # the handlers.cfg. This assumption allows us to actually get to the
+        # handlers without mucking with the path or iterating over some set of
+        # "handler directories"
+        if not handler.startswith('/'):
+            handlers_file = self.app.config['HANDLERS_FILE']
+            dirname = os.path.dirname(handlers_file)
+            handler = os.path.join(dirname, handler)
+
         if not self._handler_sane(handler):
             raise InternalServerError('Handler failure')
 

@@ -15,9 +15,11 @@
 
 import pytest
 import os
+import shutil
 from crops_webhook import WebhookApp
 from configparser import RawConfigParser
 from flask import Flask
+from unittest.mock import patch, Mock
 import unittest.mock
 
 
@@ -255,6 +257,34 @@ def test_successful_handler(test_client, handler_file, headers):
     assert(rv.data == b'This thing worked')
 
 
+# Test a successful handler with a relative path
+def test_successful_handler_relative(test_client, handler_file, headers):
+    # Add handler for checking the payload file is correct
+    dirname = os.path.dirname(handler_file)
+    dirname = os.path.join(dirname, 'relativedir')
+
+    os.mkdir(dirname)
+    shutil.copy('tests/handler_success.sh', dirname)
+
+    handler = 'relativedir/handler_success.sh'
+    add_handler(handler_file, "testevent", handler)
+
+    token = "foo"
+    data = ''
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
+
+    # This should return 200
+    rv = test_client.post('/webhook',
+                          headers=headers,
+                          data=data)
+    print(rv.status_code)
+    print(rv.data)
+
+    assert(rv.status_code == 200)
+    assert(rv.data == b'This thing worked')
+
+
 # Test non-existent handler
 def test_non_existent_handler(test_client, handler_file, headers):
     # Add handler for checking the payload file is correct
@@ -283,3 +313,28 @@ def test_key_set_in_environment(flaskapp_mock):
     webhook = WebhookApp(flaskapp_mock)
 
     assert(webhook.key == 'testkey')
+
+
+# Verify that the correct handler is returned using both absolute or relative
+# paths
+def test_gethandler_expected_result(flaskapp_mock, handler_file, headers):
+    with patch('crops_webhook.get_key') as mock_get_key:
+        webhook = WebhookApp(flaskapp_mock)
+
+        # Common mocking
+        flaskapp_mock.config = {}
+        config = Mock()
+        webhook._load_handlers_config = Mock(return_value=config)
+        webhook._handler_sane = Mock(return_value=True)
+        webhook.app.config['HANDLERS_FILE'] = handler_file
+        dirname = os.path.dirname(handler_file)
+
+        # Check absolute paths work as expected
+        config.get = Mock(return_value='/absolute')
+        handler = webhook._gethandler(headers)
+        assert(handler == '/absolute')
+
+        # Check relative paths work as expected
+        config.get = Mock(return_value='relative')
+        handler = webhook._gethandler(headers)
+        assert(handler == os.path.join(dirname, 'relative'))
