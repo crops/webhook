@@ -274,7 +274,7 @@ def test_non_existent_handler(test_client, handler_file, headers):
     print(rv.data)
 
     assert(rv.status_code == 500)
-    assert(rv.data == b'Handler failure')
+    assert(b'Handler failure' in rv.data)
 
 
 # Check that a key set in the environment is honored

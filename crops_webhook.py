@@ -26,7 +26,7 @@ import subprocess
 from configparser import RawConfigParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from flask import Flask, request, send_file
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, InternalServerError
 
 
 class Config(object):
@@ -124,6 +124,9 @@ class WebhookApp():
         if not handler:
             raise BadRequest('No Handler for event {}'.format(event))
 
+        if not self._handler_sane(handler):
+            raise InternalServerError('Handler failure')
+
         return handler
 
     # Basic sanity checks on the handler such that it is executable,
@@ -150,9 +153,6 @@ class WebhookApp():
             payload = request.get_data()
             with open(payload_file, 'wb') as f:
                 f.write(payload)
-
-            if not self._handler_sane(handler):
-                return "Handler failure", 500
 
             # Call the handler from the config
             cmd = [handler, tmpdir]
