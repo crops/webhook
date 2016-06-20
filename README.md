@@ -78,13 +78,16 @@ Event Handlers
     anotherevent=relativepath/someotherapp.py
     ```
 
-    In this case it would be expected that the directory layout would be similar
-    to:
+    For an example, assume that ```HANDLERS_FILE=/handlers/handlers.cfg```.
+    Using the example handlers.cfg above, the directory layout would be:
     ```
     .
-    ├── handlers.cfg
-    └── relativepath
-        └── someotherapp.py
+    ├── handlers
+    │   ├── handlers.cfg
+    │   └── relativepath
+    │       └── sometotherapp.py
+    └── somepath
+        └── somescript.sh
     ```
 
   * **Handler API**
