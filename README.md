@@ -146,3 +146,32 @@ Event Handlers
         echo -n "Didn't get expected data" > $workdir/response
     fi
     ```
+    And now the same in python instead:
+    ```python
+    #!/usr/bin/env python
+    
+    import sys
+    import os
+    
+    # Get the directory containing the payload
+    workdir = sys.argv[1]
+    
+    # Get the payload file
+    payload = os.path.join(workdir, 'payload')
+    
+    # Set the location of response
+    response = os.path.join(workdir, 'response')
+    
+    datafound = False
+    with open(payload, 'r') as f:
+        for line in f:
+            if 'expected data' in line:
+               datafound=True
+               break
+    
+    with open(response, 'w') as f:
+        if datafound:
+            f.write("Got expected data")
+        else:
+            f.write("Didn't get expected data")
+    ```
