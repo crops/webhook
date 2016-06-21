@@ -116,11 +116,7 @@ class WebhookApp():
 
         return config
 
-    def _gethandler(self, headers):
-        event = headers.get('X-GitHub-Event', False)
-        if not event:
-            raise BadRequest('No X-GitHub-Event header received')
-
+    def _gethandler(self, event):
         config = self._load_handlers_config()
         handler = config.get('Handlers', event, fallback=False)
         if not handler:
@@ -155,7 +151,12 @@ class WebhookApp():
     # be sent as the response payload.
     def _webhook(self):
         self._authenticate(request)
-        handler = self._gethandler(request.headers)
+
+        event = request.headers.get('X-GitHub-Event', False)
+        if not event:
+            raise BadRequest('No X-GitHub-Event header received')
+
+        handler = self._gethandler(event)
 
         tmpdir = tempfile.mkdtemp(suffix="cowsaregood")
         try:

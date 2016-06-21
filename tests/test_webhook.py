@@ -319,7 +319,7 @@ def test_key_set_in_environment(flaskapp_mock):
 
 # Verify that the correct handler is returned using both absolute or relative
 # paths
-def test_gethandler_expected_result(flaskapp_mock, handler_file, headers):
+def test_gethandler_expected_result(flaskapp_mock, handler_file):
     with patch('crops_webhook.get_key') as mock_get_key:
         webhook = WebhookApp(flaskapp_mock)
 
@@ -333,10 +333,10 @@ def test_gethandler_expected_result(flaskapp_mock, handler_file, headers):
 
         # Check absolute paths work as expected
         config.get = Mock(return_value='/absolute')
-        handler = webhook._gethandler(headers)
+        handler = webhook._gethandler('')
         assert(handler == '/absolute')
 
         # Check relative paths work as expected
         config.get = Mock(return_value='relative')
-        handler = webhook._gethandler(headers)
+        handler = webhook._gethandler('')
         assert(handler == os.path.join(dirname, 'relative'))
