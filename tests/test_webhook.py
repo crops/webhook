@@ -37,6 +37,8 @@ def app_config_file(request, tmpdir, handler_file, key_file):
     request.addfinalizer(fin)
     os.environ['CROPS_WEBHOOK_CONFIG'] = name
 
+    return name
+
 
 @pytest.fixture
 def flaskapp_mock():
