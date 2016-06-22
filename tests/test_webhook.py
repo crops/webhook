@@ -24,12 +24,13 @@ import unittest.mock
 
 
 @pytest.fixture
-def app_config_file(request, tmpdir, handler_file, key_file):
+def app_config_file(request, tmpdir, handler_file, key_file, whitelist_file):
     name = os.path.join(str(tmpdir), 'app_config')
 
     with open(name, 'w') as f:
         f.write("HANDLERS_FILE = '{}'\n".format(handler_file))
         f.write("KEY_FILE = '{}'\n".format(key_file))
+        f.write("WHITELIST_ENV = '{}'\n".format(whitelist_file))
 
     def fin():
         os.environ.pop('CROPS_WEBHOOK_CONFIG')
@@ -38,6 +39,29 @@ def app_config_file(request, tmpdir, handler_file, key_file):
     os.environ['CROPS_WEBHOOK_CONFIG'] = name
 
     return name
+
+
+@pytest.fixture
+def whitelist_file(tmpdir):
+    name = os.path.join(str(tmpdir), 'whitelist_file')
+
+    config = RawConfigParser()
+    config['Whitelist'] = {}
+    config['Whitelist']['testevent'] = 'PATH'
+
+    with open(name, 'w') as f:
+        config.write(f)
+
+    return name
+
+
+def add_whitelist(filename, event, whitelist):
+    config = RawConfigParser()
+    config.read(filename)
+    config['Whitelist'][event] = whitelist
+
+    with open(filename, 'w') as f:
+        config.write(f)
 
 
 @pytest.fixture
@@ -344,3 +368,79 @@ def test_gethandler_expected_result(flaskapp_mock, handler_file):
         config.get = Mock(return_value='relative')
         handler = webhook._gethandler('')
         assert(handler == os.path.join(dirname, 'relative'))
+
+
+def test_get_env_from_whitelist(flaskapp_mock):
+    webhook = WebhookApp(flaskapp_mock, loadconfig=False)
+
+    ###############################
+    # Test that no whitelist_config returns the current environment
+    webhook.whitelist_config = None
+
+    env = webhook._get_env_from_whitelist('testevent')
+    assert(env == os.environ)
+    ###############################
+
+    ###############################
+    # Test that an event that doesn't exist returns an empty environment
+    whitelist_config = Mock()
+    whitelist_config.get = Mock(return_value='')
+    webhook.whitelist_config = whitelist_config
+
+    # patch os.environ so it actually contains the values we are whitelisting
+    env = webhook._get_env_from_whitelist('testevent')
+    assert(env == {})
+    ###############################
+
+    ###############################
+    # Test that the returned environment only contains the whitelisted values
+    whitelist_env = {
+                        'FIRSTENV': 'foo',
+                        'SECONDENV': 'bar'
+                    }
+    whitelist_config = Mock()
+    whitelist_config.get = Mock(return_value=' '.join(whitelist_env.keys()))
+    webhook.whitelist_config = whitelist_config
+
+    # patch os.environ so it actually contains the values we are whitelisting
+    with patch.dict(os.environ, whitelist_env):
+        env = webhook._get_env_from_whitelist('testevent')
+        assert(env == whitelist_env)
+    ###############################
+
+
+def test_env_whitelist_in_handler(app_config_file, handler_file,
+                                  whitelist_file, headers):
+    app = Flask("mytestname")
+    webhook = WebhookApp(app, loadconfig=False)
+
+    # Add handler for checking the environment is correct
+    handler = os.path.abspath("tests/handler_test_env.py")
+    add_handler(handler_file, "testevent", handler)
+
+    # Add whitelist
+    whitelist_env = {
+                        'FIRSTENV': 'foo',
+                        'SECONDENV': 'bar'
+                    }
+    whitelist = ' '.join(list(whitelist_env))
+    add_whitelist(whitelist_file, "testevent", whitelist)
+
+    webhook.loadconfig()
+    test_client = webhook.app.test_client()
+
+    token = 'foo'
+    data = ''
+    headers['X-Hub-Signature'] = b'sha1=' + get_digest(token, data)
+    headers['X-GitHub-Event'] = b'testevent'
+
+    # patch os.environ so it actually contains the values we are whitelisting
+    with patch.dict(os.environ, whitelist_env):
+        # This should return 200
+        rv = test_client.post('/webhook',
+                              headers=headers,
+                              data=data)
+    print(rv.status_code)
+    print(rv.data)
+
+    assert(rv.status_code == 200)

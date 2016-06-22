@@ -48,6 +48,7 @@ class Config(object):
     HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
     KEY_FILE = '/etc/crops-webhook/key'
     ROUTE = '/webhook'
+    WHITELIST_ENV = ''
 
 
 class WebhookApp():
@@ -56,6 +57,7 @@ class WebhookApp():
 
         self.app = app
         self.key = None
+        self.whitelist_config = None
 
         if loadconfig:
             self.loadconfig()
@@ -69,6 +71,10 @@ class WebhookApp():
         # any other config.
         self.key = (os.getenv('CROPS_WEBHOOK_KEY', '') or
                     get_key(self.app.config['KEY_FILE']))
+
+        # Since the environment can't be changed once the app is running, there
+        # is no reason to try to do lazy loading of the environment whitelist.
+        self.whitelist_config = self._get_whitelist_config()
 
         self.app.add_url_rule(self.app.config['ROUTE'],
                               view_func=self._webhook,
@@ -99,6 +105,16 @@ class WebhookApp():
             computed_digest = computed_digest.encode()
 
         return hmac.compare_digest(digest, computed_digest)
+
+    def _get_whitelist_config(self):
+        whitelist_file = self.app.config.get('WHITELIST_ENV')
+        if whitelist_file:
+            config = RawConfigParser()
+            config.read(whitelist_file)
+
+            return config
+        else:
+            return None
 
     def _authenticate(self, request):
         digest = request.headers.get('X-Hub-Signature', False)
@@ -146,6 +162,28 @@ class WebhookApp():
     def _handler_sane(self, handler):
         return os.access(handler, os.F_OK | os.R_OK | os.X_OK)
 
+    def _get_env_from_whitelist(self, event):
+        config = self.whitelist_config
+
+        # If there is no config, don't restrict the environment.
+        if not config:
+            return os.environ.copy()
+
+        # If the config exists but there is no match for the event, use an
+        # empty environment.
+        envwhitelist = config.get('Whitelist', event, fallback='').split()
+        if not envwhitelist:
+            return {}
+
+        # Now since the event was found in the config, return an environment
+        # only containing variables on the whitelist
+        env = {}
+        for var in envwhitelist:
+            if var in os.environ:
+                env[var] = os.environ[var]
+
+        return env
+
     # The hook will run and it will create a temporary directory with the
     # file: "payload".
     # payload is the payload written to the file.
@@ -171,10 +209,13 @@ class WebhookApp():
             with open(payload_file, 'wb') as f:
                 f.write(payload)
 
+            # Get the environment to use for the event/handler
+            whitelist_env = self._get_env_from_whitelist(event)
+
             # Call the handler from the config
             cmd = [handler, tmpdir]
             print(cmd)
-            rc = subprocess.call([handler, tmpdir])
+            rc = subprocess.call([handler, tmpdir], env=whitelist_env)
             if rc != 0:
                 status_code = 500
             else:

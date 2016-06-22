@@ -35,6 +35,7 @@ Configuration
   HANDLERS_FILE = '/etc/crops-webhook/handlers.cfg'
   KEY_FILE = '/etc/crops-webhook/key'
   ROUTE = '/webhook'
+  WHITELIST_ENV = ''
   ```
   Any of these values can be overridden in a file specified in the
   *CROPS_WEBHOOK_CONFIG* environment variable.
@@ -58,6 +59,35 @@ Configuration
      ```
      http://localhost/myroute
      ```
+
+   * **WHITELIST_ENV**
+
+     This specifies the file containing information on what environment
+     variables are whitelisted for each event. The format is described below.
+
+     If *WHITELIST_ENV* is set to a valid file then the environment inside
+     inside the handler for each event will only contain the environment
+     variables explicitly listed for the event.
+
+     In other words, if an event is not listed in the *WHITELIST_ENV* file,
+     the handler for the event will run with an empty environment.
+
+     This is useful for restricting what the handlers can see from the main
+     webhook process. For instance if the webhook process has multiple keys
+     stored in its environment, the *WHITELIST_ENV* file lets you only show
+     what is necessary to the handler.
+
+     * **WHITELIST_ENV format**
+       
+         The *WHITELIST_ENV* file contains one section called *Whitelist*. In
+         the section, there should be event/whitelist pairs.
+
+         Here is an example *WHITELIST_ENV* file:
+         ```
+         [Whitelist]
+         event=VAR1 VAR2
+         anotherevent=ANOTHERVAR MOREVAR
+         ```
 
 Event Handlers
 ---------------------
