@@ -51,11 +51,16 @@ class Config(object):
 
 
 class WebhookApp():
-    def __init__(self, app):
+    def __init__(self, app, loadconfig=True):
         assert(isinstance(app, Flask))
 
         self.app = app
+        self.key = None
 
+        if loadconfig:
+            self.loadconfig()
+
+    def loadconfig(self):
         # Load the application configuration
         self.app.config.from_object(Config)
         self.app.config.from_envvar('CROPS_WEBHOOK_CONFIG', silent=True)
