@@ -310,7 +310,11 @@ def test_non_existent_handler(test_client, handler_file, headers):
 
 
 # Check that a key set in the environment is honored
-def test_key_set_in_environment(flaskapp_mock):
+def test_key_set_in_environment(request, flaskapp_mock):
+    def fin():
+        os.environ.pop('CROPS_WEBHOOK_KEY')
+    request.addfinalizer(fin)
+
     os.environ['CROPS_WEBHOOK_KEY'] = 'testkey'
     webhook = WebhookApp(flaskapp_mock)
 
