@@ -9,4 +9,5 @@ setup(
     install_requires=['Flask>=0.9'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest-pep8'],
+    packages=['.'],
 )
